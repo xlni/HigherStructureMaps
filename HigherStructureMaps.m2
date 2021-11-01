@@ -554,12 +554,14 @@ S' = ring Cdef
 structureMap(Cdef,3,1) --v^(3)_1
 
 C' = topComplex Cdef
+prune HH C'
+--seems like HH_1,2,3 = 0 in the examples I've done,
+--even though the starting ideal was not perfect
+
 C'' = topComplex initDefectVars(C',{b'})
 
 S'' = ring C''
 prune HH C''
---seems like HH_1,2,3 = 0 in the examples I've done,
---even though the starting ideal was not perfect
 
 
 C''**S''/ideal((vars ring C')**S'') --kill first set of defvars; also exact
