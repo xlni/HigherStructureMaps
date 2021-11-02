@@ -336,8 +336,15 @@ initDefectVars (ChainComplex,List) := ChainComplex => opts -> (C,dv) -> (
     ic := opts.StartingIndex; --whether to start indexing at 0 or 1
     Sdef := (S[
             (i -> (dv_0)_i)\(toSequence\flatten\(subsets(ic..(ic+f1-1),2)**subsets(ic..(ic+f3-1),1))),
-            (i -> (dv_1)_i)\(toSequence\flatten\(subsets(ic..(ic+f1-1),4)**subsets(ic..(ic+f3-1),2)))
-            ,Join=>false]); --Degrees=>{binomial(n,2):{0,1,0}},
+            (i -> (dv_1)_i)\(toSequence\flatten\(subsets(ic..(ic+f1-1),4)**subsets(ic..(ic+f3-1),2))),
+            Join=>false,
+	    Degrees=> ((degrees exteriorPower(2,C_1))**(degrees C_3))/(L-> (
+		    L_0-L_1
+		    )) |
+	    ((degrees exteriorPower(4,C_1))**(degrees exteriorPower(2,C_3)))/(L-> (
+		    L_0-L_1
+		    ))
+	    ]); --Degrees=>{binomial(n,2):{0,1,0}},
     --the subscripts on b match the basis order for \bigwedge^2 F_1^* \otimes F_3
     --c for wedge 2 f3
     Cdef := C**Sdef;
@@ -482,6 +489,13 @@ doc ///
 	    computing $v^{(3)}_2$:
 	Example
 	    structureMap(Cdef,3,2)
+	Text
+	    The method assigns degrees to the adjoined variables in an attempt to keep things
+	    homogeneous.
+	Example
+	    degree b_(1,2,1)
+    Caveat
+    	It seems like there may currently be an issue with the heft vector of {\tt Sdef}.
 ///
 
 doc ///
@@ -528,14 +542,13 @@ viewHelp "HigherStructureMaps"
 
 n=4
 S = QQ[x,y,z]
-d3 = dual matrix{{x,x,y,z}} --n by 1 matrix, must be at least grade 3
+d3 = dual matrix{{x,y,z,0}} --n by 1 matrix, must be at least grade 3
 F2 = target d3
 d3wedge = wedgeProduct(1,1,F2)*(d3**id_F2)
 
 --repeatedly randomly project until a valid choice is found
-prjdeg = 0 --degree of projection map wedge^2 F2 -> F1
-T = cpuTime()
-while (cpuTime()<T+1) do (
+prjdeg = 1 --degree of projection map wedge^2 F2 -> F1
+while true do (
     prj = random(S^{n:prjdeg}, S^{binomial(n,2):0},
         Density=>0.3,Height => 1); --tweakable
     d2 = prj*d3wedge;
@@ -544,8 +557,12 @@ while (cpuTime()<T+1) do (
 d1 = dual gens ker dual d2
 assert((ker d1 == image d2) and (ker d2 == image d3))
 
-C = chainComplex(map(S^1,,d1),map(source d1,,d2),map(source d2,,d3))
+--fix degrees
+d1 = map(S^1,,d1); d2 = map(source d1,,d2); d3 = map(source d2,,d3);
+
+C = chainComplex(d1,d2,d3)
 C.dd
+betti C
 --if all went well, that should produce a computationally simple res of format 1,4,4,1
 
 structureMap(C,3,1) --w^(3)_1
@@ -555,6 +572,7 @@ structureMap(Cdef,3,1) --v^(3)_1
 
 C' = topComplex Cdef
 prune HH C'
+betti(C',Weights=>{1})
 --seems like HH_1,2,3 = 0 in the examples I've done,
 --even though the starting ideal was not perfect
 
@@ -562,7 +580,32 @@ C'' = topComplex initDefectVars(C',{b'})
 
 S'' = ring C''
 prune HH C''
-
+betti(C'',Weights=>{1})
 
 C''**S''/ideal((vars ring C')**S'') --kill first set of defvars; also exact
 C''**S''/ideal(vars S'') --kill second set of defvars; original complex, up to sign
+
+--investigating the last phenomenon more:
+--no defect variables for second iteration, i.e. b' set to 0
+structureMap(C',3,0)
+structureMap(Cdef,3,2)
+
+structureMap(C',3,1)
+structureMap(Cdef,3,1)
+
+structureMap(C',3,2)
+structureMap(Cdef,3,0)
+
+
+structureMap(C',2,0)
+structureMap(Cdef,2,1) --well, shape needs adjusting
+
+structureMap(C',2,1) --ditto
+structureMap(Cdef,2,0)
+
+
+structureMap(C',1,0)
+structureMap(Cdef,1,1)
+
+structureMap(C',1,1)
+structureMap(Cdef,1,0)
