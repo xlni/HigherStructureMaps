@@ -950,13 +950,16 @@ doc ///
 end--
 uninstallPackage "HigherStructureMaps"
 restart
+
+------------------------
+-- example code below --
+------------------------
 installPackage "HigherStructureMaps"
-viewHelp "HigherStructureMaps"
 
 debugLevel = 1 --to check if liftings succeed
 
 --1672 example of interest
-S = QQ[x_1, x_2, x_3,b_1..b_5];
+S = ZZ/32003[x_1, x_2, x_3];
 I = ideal(x_2^2*x_3-2*x_1*x_3^2+x_2*x_3^2,x_1*x_2*x_3-x_1*x_3^2,x_1^2*x_3-x_1*x_3^2,x_1^2*x_2+x_1*x_2^2-2*x_1*x_3^2,x_1*x_2^3+4
 *x_1*x_3^3-x_2*x_3^3-3*x_3^4,x_1^7-x_2^7,x_1^8,x_2^8,x_3^6)
 
