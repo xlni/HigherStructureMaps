@@ -748,9 +748,46 @@ Maps1573 (ChainComplex,ZZ,ZZ) := Sequence => (C,i,j) -> (
 initDefectVars = method(Options => {StartingIndex => 1})
 initDefectVars (ChainComplex,List) := ChainComplex => opts -> (C,dv) -> (
     S := ring C;
-    f3 := rank C_3;
-    f2 := rank C_2; f1 := rank C_1;
+    frmt := (f0,f1,f2,f3) := rank\(C_0,C_1,C_2,C_3);
     ic := opts.StartingIndex; --whether to start indexing at 0 or 1
+    --convert subscripts (1,2,3) to 123 for easier reading
+    --I assume we won't be working with f1 >= 10 anytime soon...
+    seqToNum := L -> (
+	sum(#L, i -> 10^i*(reverse L)_i)
+	);
+    inds := L -> (
+	apply(L, l -> toSequence(seqToNum\l))
+	);
+    --the subscripts on b match the basis order for \bigwedge^2 F_1^* \otimes F_3
+    --c for wedge 2 f3
+    varlist := (
+	(i -> (dv_0)_i)\inds(subsets(ic..(ic+f1-1),2)**subsets(ic..(ic+f3-1),1))|
+        (i -> (dv_1)_i)\inds(subsets(ic..(ic+f1-1),4)**subsets(ic..(ic+f3-1),2))
+    	);
+    deglist := (
+	((degrees exteriorPower(2,C_1))**(degrees C_3))|
+	((degrees exteriorPower(4,C_1))**(degrees exteriorPower(2,C_3)))
+	);
+    --for the third set of defect vars, depends if format is
+    --(1,5,*,*) or (1,*,*,2)
+    if (f1==5 and f3>2) then (
+	varlist = varlist | (
+	    (i -> (dv_2)_i)\inds(subsets(ic..(ic+f1-1),1)**subsets(ic..(ic+f3-1),3))
+	    );
+	deglist = deglist | (
+	    ((degrees (exteriorPower(5,C_1)**C_1))**(degrees exteriorPower(3,C_3)))
+	    );
+	);
+    if (f1>5 and f3==2) then (
+	varlist = varlist | (
+	    (i -> (dv_2)_i)\inds(subsets(ic..(ic+f1-1),6)**subsets(ic..(ic+f3-1),1))
+	    );
+	deglist = deglist | (
+	    ((degrees exteriorPower(6,C_1))**(degrees (exteriorPower(2,C_3)**C_3)))
+	    );
+	);
+    Sdef := S[varlist,Degrees => deglist/(L -> L_0-L_1),Join => false];
+    -*
     Sdef := (S[
             (i -> (dv_0)_i)\(toSequence\flatten\(subsets(ic..(ic+f1-1),2)**subsets(ic..(ic+f3-1),1))),
             (i -> (dv_1)_i)\(toSequence\flatten\(subsets(ic..(ic+f1-1),4)**subsets(ic..(ic+f3-1),2))),
@@ -762,8 +799,8 @@ initDefectVars (ChainComplex,List) := ChainComplex => opts -> (C,dv) -> (
 		    L_0-L_1
 		    ))
 	    ]); --Degrees=>{binomial(n,2):{0,1,0}},
-    --the subscripts on b match the basis order for \bigwedge^2 F_1^* \otimes F_3
-    --c for wedge 2 f3
+    *-
+    --now, to actually compute the defects
     Cdef := C**Sdef;
     usedvars := 0;
     if (f1 >= 2) then (
@@ -778,6 +815,39 @@ initDefectVars (ChainComplex,List) := ChainComplex => opts -> (C,dv) -> (
         usedvars = usedvars + binomial(f3,2)*binomial(f1,4);
         Cdef.cache.StructureMapCache#(3,2) = structureMap(Cdef,3,2) + (id_(Cdef_3)**Cdef.dd_3)*(dual wedgeProduct(1,1,Cdef_3))*defmatrix2
         );
+    if (f3 >= 3 and f1 == 5) then ( --currently only for 1573
+	defmatrix3 := genericMatrix(Sdef,Sdef_usedvars,binomial(f3,3),f1);
+	usedvars = usedvars + binomial(f3,3)*f1;
+	structureMap(Cdef,3,3);
+	Cdef.cache.StructureMapCache#(3,3) = structureMap(Cdef,3,3) + (
+	    (id_(exteriorPower(2,C_3))**C.dd_3)
+	    *wedgeDiag(2,1,C_3)
+	    *defmatrix3
+	    );
+	);
+    if (f3 == 2 and f1 >= 6) then ( --currently only for 1672
+	defmatrix3 = genericMatrix(Sdef,Sdef_usedvars,f3,binomial(f1,6));
+	usedvars = usedvars + f3*binomial(f1,6);
+	structureMap(Cdef,3,323);
+	E'2 := directSum(schurModule({1,1},C_3)**C_2,schurModule({2},C_3)**C_2);
+	E'1 := directSum(C_3**schurModule({1,1},C_2),C_3**schurModule({2},C_2));
+	d3e := (
+    	    id_(exteriorPower(2,C_3))**C.dd_3
+    	    +
+    	    (1/2)**(wedgeProduct(1,1,C_3)**id_(C_2))
+    	    *(id_(C_3)**flip(C_2,C_3))
+    	    *(id_(C_3)**C.dd_3**id_(C_3))
+    	    *(wedgeDiag(1,1,C_3)**id_(C_3))
+    	    );
+	d3s := (
+    	    (1/2)*(symProd(1,1,C_3)**id_(C_2))
+    	    *(id_(C_3)**flip(C_2,C_3))
+    	    *(id_(C_3)**C.dd_3**id_(C_3))
+    	    *(wedgeDiag(1,1,C_3)**id_(C_3))
+    	    );
+	d3 := E'2_[0]*d3e+E'2_[1]*d3s;
+    	Cdef.cache.StructureMapCache#(3,323) = structureMap(Cdef,3,323) + d3*defmatrix3;
+	);
     return Cdef
     )
 
@@ -797,7 +867,6 @@ topComplex ChainComplex := ChainComplex => C -> (
         --\wedge^n F_1 -> S_{n/2-1}F_3 \otimes F_2
         dtop3 := structureMap(C,3,n//2);
         dtop3 = map(source dtop2,,dtop3);
-        Ctop := chainComplex(dtop1,dtop2,dtop3)
         ) else
     if frmt == (1,4,3 + rank C_3, rank C_3) then (
         if debugLevel > 0 then << "format: (1,4,m+3,3)" << endl;
@@ -811,9 +880,20 @@ topComplex ChainComplex := ChainComplex => C -> (
         --
         dtop3 = adjoint'(structureMap(C,3,2),C_3,C_2);
         dtop3 = map(source dtop2,,dtop3);
-        Ctop = chainComplex(dtop1,dtop2,dtop3)
-        ) else error "Ftop not yet implemented for this format";
-    return Ctop
+        ) else
+    if frmt == (1,5,6,2) then (
+	if debugLevel > 0 then << "format: (1,5,6,2)" << endl;
+	--F_1* -> R
+	dtop1 = structureMap(C,1,4)*adjoint(wedgeProduct(1,4,C_1),C_1,exteriorPower(4,C_1));
+	dtop1 = map(S^1,,dtop1);
+	--F_2* -> F_1*
+	dtop2 = dual structureMap(C,3,3);
+        dtop2 = map(source dtop1,,dtop2);
+	--F_3* -> F_2*
+	dtop3 = dual structureMap(C,2,3);
+	dtop3 = map(source dtop2,,dtop3);
+	) else error "Ftop not yet implemented for this format";
+    return chainComplex(dtop1,dtop2,dtop3)
     )
 
 beginDocumentation()
@@ -910,7 +990,7 @@ doc ///
 	    The method assigns degrees to the adjoined variables in an attempt to keep things
 	    homogeneous.
 	Example
-	    degree b_(1,2,1)
+	    degree b_(12,1)
     Caveat
     	It seems like there may currently be an issue with the heft vector of {\tt Sdef}.
 ///
@@ -957,6 +1037,19 @@ restart
 installPackage "HigherStructureMaps"
 
 debugLevel = 1 --to check if liftings succeed
+
+--split exact complex with defect variables, with "usual" grading |b| = 1, |c| = 2, etc.
+frmt = (1,5,6,2)
+S = QQ[x]
+C = chainComplex(-id_(S^(frmt_1-1)))[-1] ++ chainComplex(id_(S^1)) ++ chainComplex(id_(S^{(frmt_3):1}))[-2]
+C.dd
+Cdef = initDefectVars(C,{b,c,d}); Sdef = ring Cdef;
+structureMap(Cdef,3,1)
+degree b_(12,1)
+degree c_(1234,12)
+
+Ctop = topComplex Cdef; --only implemented for formats up to E_6
+
 
 --1672 example of interest
 S = ZZ/32003[x_1, x_2, x_3];
